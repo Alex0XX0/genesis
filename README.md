@@ -1,134 +1,134 @@
 # Genesis
 
-A small, continuously living agent built around **a transformer written from scratch in NumPy** (no PyTorch, no pretrained model, no external LLM).
-It reads, writes code, draws, sleeps, remembers, evolves its own architecture, and keeps an internal state (emotions, body signals, attention)
-that is fed **into the network itself**, so that what it says can depend on what is going on inside it.
+Небольшой непрерывно живущий агент вокруг **трансформера, написанного с нуля на NumPy** (без PyTorch, без готовых моделей, без внешних LLM).
+Он читает Википедию и книги, пишет и запускает код в песочнице, рисует, спит, вспоминает, **сам меняет свою архитектуру** и держит внутреннее
+состояние (эмоции, сигналы тела, внимание), которое подаётся **прямо в сеть**: то, что он говорит, может зависеть от того, что у него внутри.
 
-This is a **research playground**, not a product, and **not a claim of consciousness**. See [Honest status](#honest-status).
+Это **исследовательская площадка**, а не продукт, и **не заявление о сознании**. См. раздел [Честный статус](#честный-статус).
 
-> Русская версия коротко: [README.ru.md](README.ru.md)
+> English version (short copy): [README.en.md](README.en.md)
 
-## Why this exists
+## Зачем это
 
-I wanted to understand modern language models from the inside, so I built every part myself and measured every change:
-autograd, attention, optimizer, tokenizer, growth, evaluation. The agent layer on top asks a narrower research question:
+Я хотел понять современные языковые модели изнутри, поэтому написал каждую часть сам и измерял каждое изменение: автоград, внимание, оптимизатор,
+токенайзер, рост сети, оценку. Агентный слой сверху задаёт более узкий вопрос:
 
-*What happens if a tiny language model is trained continuously on its own experience, can modify its own architecture under a statistical test, and has a
-learned internal state that it can read, report and be measured on?*
+*Что будет, если крошечную языковую модель непрерывно учить на её собственном опыте, дать ей менять собственную архитектуру под статистическим
+тестом и дать выученное внутреннее состояние, которое она может читать, пересказывать и которое можно измерить?*
 
-## What is in it
+## Что внутри
 
-| Layer | What it does | Where |
+| Слой | Что делает | Где |
 |---|---|---|
-| **Network** | Pre-LN transformer (d=128, 4 heads, ctx 128), tied embeddings, hand-written reverse-mode autograd, Muon (for matrices) + Adam, KV-cache generation | `gn_net.py` |
-| **Tokenizer** | Word-level BPE that grows during life (up to 4096 merges), plus 256 VQ codes for image patches | `gn_tok.py`, `gn_senses.py` |
-| **Growth & evolution** | Function-preserving growth (add a zero-output layer, widen an MLP), then *tournaments*: clone the net, apply a mutation, train both on the same batches, accept only if a paired t-test on held-out text says it is better | `gn_net.py`, `gn_mind.py: a_evolve` |
-| **Actions** | A softmax policy (REINFORCE) chooses among 17 activities: read Wikipedia, read books, study / try / write code in a sandbox, take exams with hidden tests, look at pictures, draw, sleep, rest, speak, reflect on itself, protect its memory, evolve | `gn_mind.py` |
-| **Learned value & emotions** | A linear TD value model over state + context; the prediction error drives 25 functional emotions with half-lives and soft saturation. The list of emotion names is innate, *what triggers them* is learned. | `gn_mind.py: ValueModel, Emotions` |
-| **Taste & curiosity** | LinUCB curiosity; a taste model with a Wundt curve (liking peaks at moderate surprise) | `gn_mind.py: Taste, Curiosity` |
-| **State inside the network** | A 64-d state vector (emotions, mood, fatigue, fear, attention focus, memory score, agency skill, last action) is projected by a learned matrix `Ws` and added to every token embedding. `Ws` is zero at birth, so it is function-preserving. Experience is stored together with the state it happened in | `gn_net.py`, `gn_mind.py: state_embed` |
-| **Self-model machinery** | Global-workspace-style attention spotlight, attention-schema prediction, metacognitive calibration, theory-of-mind of the human, forward model of its own actions ("agency"), a self-written list of facts about itself, a fear-of-losing-memory drive | `gn_mind.py` |
-| **Sleep** | Consolidation, replay of forgotten phrases, a fixed-sample recall probe, dream images and text | `gn_mind.py: sleep, sleep_recall` |
-| **World** | Code sandbox (bubblewrap, with a Python audit-hook fallback), a school of programming katas with hidden tests, a gallery, a chat UI and a "brain" visualizer | `gn_world.py`, `chat.html`, `brain.html` |
-| **Legacy symbolic layer** | The earliest stdlib-only version (v0.3): idf memory, cloze test, beliefs. Still used for some helpers | `genesis.py`, `genesis_life.py` |
+| **Сеть** | Pre-LN трансформер (d=128, 4 головы, контекст 128), общие эмбеддинги, ручной обратный автоград, Muon (для матриц) + Adam, генерация с кэшем K/V | `gn_net.py` |
+| **Токенайзер** | Пословный BPE, растущий в течение жизни (до 4096 слияний), плюс 256 VQ-кодов для кусочков картинок | `gn_tok.py`, `gn_senses.py` |
+| **Рост и эволюция** | Рост без изменения функции (новый слой с нулевым выходом, расширение MLP), затем *турниры*: клон сети, мутация, обучение обеих копий на одинаковых батчах, принятие только если парный t-тест на отложенном тексте говорит «лучше» | `gn_net.py`, `gn_mind.py: a_evolve` |
+| **Действия** | Политика (softmax, REINFORCE) выбирает из 17 занятий: читать Википедию и книги, разбирать, пробовать и писать код в песочнице, сдавать экзамены со скрытыми тестами, смотреть картинки, рисовать, спать, отдыхать, говорить, размышлять о себе, беречь память, эволюционировать | `gn_mind.py` |
+| **Выученная ценность и эмоции** | Линейная TD-оценка по состоянию и контексту; ошибка предсказания запускает 25 функциональных эмоций с периодами полураспада и мягким насыщением. Список названий эмоций врождённый, *что их вызывает* — выучено | `gn_mind.py: ValueModel, Emotions` |
+| **Вкус и любопытство** | Любопытство на LinUCB; модель вкуса с кривой Вундта (нравится умеренная неожиданность) | `gn_mind.py: Taste, Curiosity` |
+| **Состояние внутри сети** | Вектор состояния из 64 чисел (эмоции, настроение, усталость, страх, фокус внимания, память, навык авторства, последнее действие) умножается на выученную матрицу `Ws` и прибавляется к эмбеддингу каждого токена. При рождении `Ws` равна нулю, поэтому функция не меняется. Опыт хранится вместе с состоянием, в котором он случился | `gn_net.py`, `gn_mind.py: state_embed` |
+| **Самомодель** | Прожектор внимания в духе глобального рабочего пространства, схема внимания (предсказание собственного фокуса), метапознательная калибровка, модель собеседника, прямая модель собственных действий («авторство»), список фактов о себе, которые он выбирает сам, страх потерять память | `gn_mind.py` |
+| **Сон** | Закрепление, повтор забытых фраз, замер памяти на фиксированной выборке, сны в виде текста и картинок | `gn_mind.py: sleep, sleep_recall` |
+| **Мир** | Песочница для кода (bubblewrap, запасной вариант на аудит-хуках Python), школа задач со скрытыми тестами, галерея, чат и визуализатор «мозга» | `gn_world.py`, `chat.html`, `brain.html` |
+| **Старый символьный слой** | Самая первая версия (v0.3, только стандартная библиотека): память по IDF, cloze-тест, убеждения. Часть вспомогательных функций ещё используется | `genesis.py`, `genesis_life.py` |
 
-## Quick start
+## Быстрый старт
 
-Requires Python 3.10+ and NumPy. Pillow is used for images; OpenCV is optional.
+Нужны Python 3.10+ и NumPy. Pillow нужен для картинок, OpenCV необязателен.
 
 ```bash
 pip install -r requirements.txt
-python3 genesis_web.py            # opens on http://127.0.0.1:8765  (use --port N, --open)
+python3 genesis_web.py            # откроется на http://127.0.0.1:8765  (--port N, --open)
 ```
 
-The first start is a **birth**: random weights, 3 layers, 0.63 M parameters. It starts learning immediately from a small built-in curriculum and
-reads Wikipedia on its own (read-only network access). Over a day or two on a CPU laptop it grows to about 7 layers / 3 M parameters.
+Первый запуск — это **рождение**: случайные веса, 3 слоя, 0,63 млн параметров. Он сразу начинает учиться по небольшому встроенному курсу и
+сам читает Википедию (доступ в сеть только на чтение). За день-два на обычном ноутбуке без видеокарты вырастает примерно до 7 слоёв и 3 млн параметров.
 
-Optional, for a proper corpus (~300 MB download of Wikimedia dumps, CC BY-SA; the script is polite and resumable):
+По желанию, для нормального корпуса (около 300 МБ дампов Викимедии, CC BY-SA; скрипт вежливый и умеет докачивать):
 
 ```bash
-python3 bigcorpus_fetch.py        # writes corpus_big/txt; the agent uses it automatically if present
+python3 bigcorpus_fetch.py        # пишет corpus_big/txt; агент подхватывает его сам
 ```
 
-Run as a service on Linux: see `deploy/genesis.service` (+ `genesis-awake.service` to keep a laptop awake).
-Useful environment variables: `GEN_THREADS`, `GEN_BATCH`, `GEN_CTX`, `GEN_OPT` (`muon`/`adam`), `GEN_SLEEP`, `GEN_AUTO`, `GEN_HOME` (data folder).
+Как служба Linux: `deploy/genesis.service` (+ `genesis-awake.service`, чтобы ноутбук не засыпал).
+Полезные переменные окружения: `GEN_THREADS`, `GEN_BATCH`, `GEN_CTX`, `GEN_OPT` (`muon` или `adam`), `GEN_SLEEP`, `GEN_AUTO`, `GEN_HOME` (папка данных).
 
-Tests (NumPy only): `python3 -m unittest discover -s tests -v`
+Тесты (только NumPy): `python3 -m unittest discover -s tests -v`
 
-## How it is measured
+## Как это измеряется
 
-- **Language quality:** bits per byte (bpb) on a held-out chunk of Wikipedia. Per-token loss is *not* comparable across tokenizer changes, bpb is.
-- **Every architectural claim has a bench:** `gn_bench.py` trains variants on a fixed corpus under the same CPU-time budget (`bench/`).
-- **Evolution:** accept a mutation only with a paired t-test on shared batches and shared evaluation texts, reject early when clearly worse.
-- **Self-knowledge:** `selftest.py` runs a battery with chance levels and naive baselines (see below).
+- **Качество языка:** бит на байт (bpb) на отложенном куске Википедии. Ошибка на токен при смене токенайзера несравнима, bpb сравним.
+- **У каждого архитектурного решения есть стенд:** `gn_bench.py` обучает варианты на одном корпусе с одинаковым бюджетом процессорного времени (`bench/`).
+- **Эволюция:** мутация принимается только по парному t-тесту на общих батчах и общих проверочных текстах; явно худшая отклоняется рано.
+- **Самознание:** `selftest.py` запускает батарею тестов с шансом и простыми базовыми методами (см. ниже).
 
-### Results so far (single runs on a weak CPU laptop, no GPU; treat as indicative, not as replicated science)
+### Результаты на сегодня (одиночные запуски на слабом ноутбуке, без видеокарты; ориентир, а не воспроизведённая наука)
 
-| Change | Result |
+| Изменение | Результат |
 |---|---|
-| Fast batched attention matmul + GELU | training throughput about 2.9x |
-| Muon vs Adam (0.64 M model, 60 s CPU, `bench/`) | 3.33 vs 3.44 bpb; 120 s run: 2.96 vs 3.21 |
-| Word-level BPE (4k merges) vs byte-level (12 min bench) | 1.57 vs 1.99 bpb. *The biggest single win in the project, larger than all optimizer changes together.* |
-| 4 threads + batch 16 | about +40 % throughput |
-| Evolution tournaments | one accepted mutation so far (added layer); several rejected early (e.g. number of heads) |
+| Быстрое батчевое внимание и GELU | скорость обучения примерно в 2,9 раза выше |
+| Muon против Adam (модель 0,64 М, 60 с процессора, `bench/`) | 3,33 против 3,44 bpb; запуск на 120 с: 2,96 против 3,21 |
+| Пословный BPE (4k слияний) против побайтового (стенд 12 минут) | 1,57 против 1,99 bpb. *Самый большой выигрыш в проекте, больше всех правок оптимизатора вместе взятых* |
+| 4 потока и батч 16 | примерно +40 % к скорости |
+| Эволюционные турниры | пока одна принятая мутация (добавлен слой), несколько отклонено рано (например, число голов) |
 
-### Self-awareness test battery (`selftest.py`)
+### Батарея тестов самознания (`selftest.py`)
 
-It does **not** test for consciousness (no such test exists). It measures whether what the agent says and predicts about itself agrees with what is
-actually happening inside it, each against chance or a naive baseline. First run at ~25 k steps (full table in `docs/selftest_example.md`):
+Она **не проверяет сознание** (такого теста нет). Она измеряет, совпадает ли то, что агент говорит и предсказывает о себе, с тем, что на самом деле
+происходит внутри, каждый раз против шанса или простого базового метода. Первый прогон на ~25 тыс. шагов (полная таблица в `docs/selftest_example.md`):
 
-| Test | Result | Chance / baseline |
+| Тест | Результат | Шанс / база |
 |---|---|---|
-| Intervene on a state dimension, does the matching emotion word become more likely? | 2 of 23, not significant (p=0.26) | 4 % |
-| Recognise its own chat replies among the human's | 64 % (optimistic: partly seen in training) | 50 % |
-| Predict its own next focus of attention | 80 % | 73 % for "repeat the last one" |
-| Calibration: expected reward vs actual reward | correlation -0.21 | 0 |
-| Predict how its own actions change its own state | 0 % better than chance | 0 % |
-| Remember what the human said (fixed sample) | 63 % | about 0-10 % without replay |
+| Вмешательство в состояние: растёт ли вероятность слова нужной эмоции | 2 из 23, незначимо (p=0,26) | 4 % |
+| Узнаёт свои реплики среди реплик человека | 64 % (завышено: часть он видел при обучении) | 50 % |
+| Предсказывает собственный следующий фокус внимания | 80 % | 73 % у «повторить прошлый» |
+| Калибровка: ожидаемая награда против полученной | корреляция −0,21 | 0 |
+| Предсказывает, как его действия меняют его самого | на 0 % лучше шанса | 0 % |
+| Помнит, что сказал человек (фиксированная выборка) | 63 % | около 0–10 % без повторов |
 
-So: memory works, the rest is **not yet better than simple baselines**. The state-to-language link was added after the first training, and the
-test is designed to show whether it grows with training. Re-run `selftest.py` over time.
+Итог: память работает, остальное **пока не лучше простых базовых методов**. Связь «состояние → речь» добавлена уже после первого обучения, и тест
+как раз покажет, растёт ли она. Перезапускай `selftest.py` со временем.
 
-## Honest status
+## Честный статус
 
-- The model has ~3 M parameters. Its text is word-like with plausible grammar and almost no meaning. It solves 3 of 14 school tasks.
-- The internal "emotions" are **functional variables** (they change behaviour and speech and are tracked), not evidence of experience.
-  `chat.html` shows a checklist based on the indicator-property approach of Butlin, Long et al., [arXiv:2308.08708](https://arxiv.org/abs/2308.08708),
-  with several items marked "no" or "partly" on purpose.
-- Large parts are designed by hand (emotion list, action set, reward shaping). What is *learned* is value, taste, policy, language, recall, and the
-  mapping from internal state to words. Whether anything interesting *emerges* is exactly what the test battery and ablations are for.
-- In prompts and in the built-in curriculum the human interlocutor is called "Теодор" (the author's first name) and the UI is in Russian.
+- В модели около 3 млн параметров. Её текст похож на слова с правдоподобной грамматикой и почти без смысла. Она решает 3 из 14 школьных задач.
+- Внутренние «эмоции» — **функциональные переменные** (они меняют поведение и речь и отслеживаются), а не свидетельство переживания.
+  В `chat.html` есть чек-лист по подходу индикаторных свойств из работы Butlin, Long и др., [arXiv:2308.08708](https://arxiv.org/abs/2308.08708);
+  несколько пунктов нарочно помечены «нет» или «частично».
+- Значительная часть придумана вручную (список эмоций, набор действий, формы наград). *Выучено*: ценность, вкус, политика, язык, память и соответствие
+  внутреннего состояния словам. Появляется ли что-то интересное само, как раз и должны показать батарея тестов и абляции.
+- В подсказках и встроенном курсе собеседник зовётся «Теодор» (имя автора), интерфейс на русском.
 
-## Safety and privacy
+## Безопасность и приватность
 
-- Generated code runs only in a sandbox (bubblewrap with no network and cgroup limits, or an audit-hook Python fallback), writing only in its own folder.
-- Network access is read-only: Wikipedia / Wikimedia Commons. No accounts, no credentials, nothing is posted anywhere.
-- All learned state (weights, tokenizer, memory, chats, drawings) lives in the data folder and is excluded from git (`.gitignore`). A fresh clone is a newborn.
+- Сгенерированный код выполняется только в песочнице (bubblewrap без сети и с ограничениями cgroup либо запасной вариант на аудит-хуках Python), запись только в свою папку.
+- Доступ в сеть только на чтение: Википедия и Wikimedia Commons. Никаких аккаунтов и паролей, ничего никуда не публикуется.
+- Всё выученное (веса, словарь, память, чаты, рисунки) лежит в папке данных и исключено из git (`.gitignore`). Свежий клон — новорождённый.
 
-## Repository layout
+## Устройство репозитория
 
 ```
-gn_net.py        autograd, transformer, Muon/Adam, growth, KV-cache generation
-gn_tok.py        growing word-level BPE
-gn_senses.py     image/audio VQ perception
-gn_mind.py       the agent: policy, value, emotions, taste, evolution, sleep, self-model, state conditioning
-gn_world.py      sandbox, school of tasks, files
-gn_curriculum.py built-in starter curriculum
-genesis_web.py   HTTP server + event stream for the UI;  chat.html, brain.html
-genesis.py, genesis_life.py   legacy stdlib layer
-gn_bench.py      architecture bench;  bench/ results
-selftest.py      self-knowledge test battery
-bigcorpus_fetch.py  Wikipedia dump -> text shards
-docs/            research notes, example self-test report
-tests/           unit tests (function-preserving growth, gradients, cache vs full forward)
+gn_net.py        автоград, трансформер, Muon/Adam, рост, генерация с кэшем
+gn_tok.py        растущий пословный BPE
+gn_senses.py     VQ-восприятие картинок и звука
+gn_mind.py       агент: политика, ценность, эмоции, вкус, эволюция, сон, самомодель, состояние в сети
+gn_world.py      песочница, школа задач, файлы
+gn_curriculum.py встроенный стартовый курс
+genesis_web.py   HTTP-сервер и поток событий для интерфейса;  chat.html, brain.html
+genesis.py, genesis_life.py   старый слой на стандартной библиотеке
+gn_bench.py      стенд архитектур;  bench/ результаты
+selftest.py      батарея тестов самознания
+bigcorpus_fetch.py  дамп Википедии в текстовые шарды
+docs/            исследовательские заметки, пример отчёта самотеста
+tests/           юнит-тесты (рост без смены функции, градиенты, кэш против полного прохода)
 ```
 
-## Roadmap
+## Планы
 
-- Ablations: with/without state conditioning, with/without evolution, with/without sleep replay, on the same budget.
-- A richer environment and feedback signal (so far the main external signal is the human's thumbs up/down).
-- Scale the same ideas to a larger model on a GPU to see which parts survive.
+- Абляции: с состоянием и без, с эволюцией и без, со сном и без повторов, на одинаковом бюджете.
+- Более богатая среда и сигнал обратной связи (пока главный внешний сигнал — 👍/👎 человека).
+- Перенос тех же идей на модель побольше и видеокарту, чтобы понять, какие части выживают.
 
-## License
+## Лицензия
 
-MIT. Wikipedia text fetched at run time is CC BY-SA 4.0.
+MIT. Текст Википедии, скачиваемый во время работы, распространяется под CC BY-SA 4.0.

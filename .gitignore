@@ -1,4 +1,4 @@
-# everything the agent learns or collects stays local: weights, memories, corpus, chats, drawings
+# всё, что агент выучил или собрал, остаётся локально: веса, память, корпус, чаты, рисунки
 gn_net.npz
 gn_tok.json
 gn_state.json

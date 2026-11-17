@@ -1,4 +1,4 @@
-"""Unit tests for the from-scratch network (numpy only). Run: python3 -m unittest discover -s tests -v"""
+"""Юнит-тесты сети с нуля (только numpy). Запуск: python3 -m unittest discover -s tests -v"""
 import os, sys, unittest, tempfile
 import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))

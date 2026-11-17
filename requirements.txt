@@ -1,3 +1,3 @@
 numpy>=1.24
-pillow>=10.0        # images (perception, drawing, gallery)
-opencv-python>=4.8  # optional: face counting in perceived images (haar cascade); everything works without it
+pillow>=10.0        # картинки (восприятие, рисование, галерея)
+opencv-python>=4.8  # необязательно: подсчёт лиц на картинках; без него всё работает
