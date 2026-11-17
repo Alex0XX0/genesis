@@ -1,0 +1,16 @@
+[Unit]
+Description=Genesis — непрерывно живущий самообучающийся агент
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/genesis
+ExecStart=/usr/bin/python3 %h/genesis/genesis_web.py
+Environment=GEN_SLEEP=1200 GEN_SLEEP_LEN=120 GEN_AUTO=1 GEN_THREADS=4 PYTHONUNBUFFERED=1
+Nice=5
+Restart=always
+RestartSec=5
+TimeoutStopSec=90
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d1220"/><stop offset="1" stop-color="#1c2748"/></linearGradient>
+    <radialGradient id="orb" cx="0.34" cy="0.3" r="0.8"><stop offset="0" stop-color="#d9fff3"/><stop offset="0.28" stop-color="#46d6ad"/><stop offset="0.7" stop-color="#3a63ff"/><stop offset="1" stop-color="#2a1a8c"/></radialGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#46d6ad" stop-opacity="0.55"/><stop offset="1" stop-color="#46d6ad" stop-opacity="0"/></radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="1.4"/></filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="236" fill="url(#glow)"/>
+  <g stroke="#7fe9cd" stroke-opacity="0.55" stroke-width="3" fill="none" stroke-linecap="round">
+    <path d="M256 256 L120 150 M256 256 L398 140 M256 256 L96 330 M256 256 L420 352 M256 256 L256 82 M256 256 L256 440"/>
+    <path d="M120 150 L256 82 L398 140 L420 352 L256 440 L96 330 Z" stroke-opacity="0.28"/>
+    <path d="M120 150 L96 330 M398 140 L420 352" stroke-opacity="0.2"/>
+  </g>
+  <g fill="#bffcec">
+    <circle cx="120" cy="150" r="11"/><circle cx="398" cy="140" r="9"/><circle cx="96" cy="330" r="10"/>
+    <circle cx="420" cy="352" r="12"/><circle cx="256" cy="82" r="8"/><circle cx="256" cy="440" r="9"/>
+  </g>
+  <g fill="#46d6ad" fill-opacity="0.7"><circle cx="176" cy="200" r="5"/><circle cx="342" cy="196" r="5"/><circle cx="170" cy="300" r="4"/><circle cx="350" cy="310" r="5"/></g>
+  <circle cx="256" cy="256" r="104" fill="url(#orb)"/>
+  <ellipse cx="222" cy="214" rx="46" ry="28" fill="#fff" fill-opacity="0.38" transform="rotate(-28 222 214)" filter="url(#soft)"/>
+  <circle cx="256" cy="256" r="104" fill="none" stroke="#fff" stroke-opacity="0.18" stroke-width="3"/>
+</svg>

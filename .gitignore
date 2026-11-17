@@ -1,0 +1,22 @@
+# everything the agent learns or collects stays local: weights, memories, corpus, chats, drawings
+gn_net.npz
+gn_tok.json
+gn_state.json
+gn_corpus.json
+mind.json*
+vq_*.npz
+arena.json
+brain_log.jsonl
+*.log
+port
+.lock
+backups/
+library/
+world/
+corpus_big/
+bench/corpus.bin
+__pycache__/
+*.pyc
+.env
+*.key
+.vault*

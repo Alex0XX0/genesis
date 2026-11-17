@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Genesis — мозг</title>
+<style>
+:root{--bg:#06080f;--panel:#0d1220;--line:#1b2440;--tx:#d6def5;--dim:#7684ad;--a:#35e0ff;--b:#a56bff;--c:#ff5fa8;--ok:#5dffb0}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:13px/1.4 ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;overflow:hidden}
+#app{display:grid;grid-template-columns:1fr 360px;grid-template-rows:auto 1fr auto;height:100%;gap:8px;padding:8px}
+header{grid-column:1/3;display:flex;align-items:center;gap:14px;padding:6px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+header b{font-size:15px;letter-spacing:.5px}.pill{padding:2px 9px;border:1px solid var(--line);border-radius:99px;color:var(--dim)}
+.pill.live{color:var(--ok);border-color:#1d5a44}.pill.sleep{color:var(--b);border-color:#4a3380}
+header input{flex:1;min-width:120px;background:#0a0f1d;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:6px 10px;font:inherit}
+header button{background:#14203d;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:6px 12px;cursor:pointer;font:inherit}
+header button:hover{border-color:var(--a)}
+#scene{position:relative;background:radial-gradient(ellipse at 50% 30%,#0e1630 0%,#06080f 70%);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+canvas{width:100%;height:100%;display:block}
+#side{display:flex;flex-direction:column;gap:8px;min-height:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.card h3{margin:0 0 6px;font-size:11px;font-weight:600;color:var(--dim);letter-spacing:1.2px;text-transform:uppercase}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.kv div{background:#0a0f1d;border-radius:6px;padding:4px 7px}
+.kv small{display:block;color:var(--dim);font-size:10px}.kv span{font-size:15px;color:var(--a)}
+table{width:100%;border-collapse:collapse;font-size:11px}td,th{padding:2px 4px;text-align:right;color:var(--tx)}th{color:var(--dim);font-weight:500}
+td:first-child,th:first-child{text-align:left}tr.sel td{color:var(--a)}
+#top .bar{display:flex;align-items:center;gap:6px;margin:2px 0}#top .bar i{display:block;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--b),var(--a))}
+#top .bar s{text-decoration:none;min-width:70px;color:var(--tx);white-space:pre}
+#logs{flex:1;min-height:0;display:flex;flex-direction:column}#feed{flex:1;overflow:auto;font-size:11.5px}
+#feed div{padding:2px 0;border-bottom:1px solid #111a31;color:var(--tx)}#feed .t{color:var(--dim)}#feed .arch{color:var(--b)}#feed .good{color:var(--ok)}#feed .th{color:#9fb4ff}
+#tokens{grid-column:1/3;display:flex;gap:2px;flex-wrap:wrap;padding:6px 10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;max-height:78px;overflow:hidden}
+#tokens span{padding:1px 3px;border-radius:3px;white-space:pre;background:#0a0f1d}
+canvas#spark{height:46px;width:100%}
+</style></head><body>
+<div id="app">
+<header><b>🧠 Genesis · мозг</b><span class="pill" id="state">…</span><span class="pill" id="act">…</span>
+<input id="probe" placeholder="введи текст — посмотри, какие нейроны загорятся (пусто = то, что он читает сейчас)"><button id="go">показать</button><button id="live">живой режим</button></header>
+<div id="scene"><canvas id="cv"></canvas></div>
+<div id="side">
+<div class="card"><h3>обучение</h3><div class="kv" id="kv"></div><canvas id="spark"></canvas></div>
+<div class="card"><h3>слои (клик — выбрать для внимания)</h3><table id="lt"></table></div>
+<div class="card" id="top"><h3>что он ждёт следующим</h3><div id="topb"></div></div>
+<div class="card" id="logs"><h3>поток жизни</h3><div id="feed"></div></div>
+</div>
+<div id="tokens"></div>
+</div>
+<script>
+const $=id=>document.getElementById(id),cv=$('cv'),cx=cv.getContext('2d');let W=0,H=0,DPR=devicePixelRatio||1;
+function fit(){const r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*DPR;cv.height=H*DPR;cx.setTransform(DPR,0,0,DPR,0,0)}new ResizeObserver(fit).observe(cv);fit();
+let snap=null,smooth=[],sel=0,probeText='',mode='live',attnS=[],t0=performance.now();
+const hue=(i,n)=>190+ (i/Math.max(1,n-1))*140;            // от голубого к розовому
+async function pull(){try{const u='/brain.json'+(probeText?'?text='+encodeURIComponent(probeText):'');const r=await fetch(u);const j=await r.json();if(j){snap=j;onSnap()}}catch(e){}
+  setTimeout(pull,probeText?1200:900)}
+function onSnap(){const L=snap.layers;
+  while(smooth.length<L.length)smooth.push(new Float32Array(1));
+  L.forEach((l,i)=>{const n=l.act.length;if(smooth[i].length!==n)smooth[i]=new Float32Array(n);
+    let mx=1e-6;for(let k=0;k<n;k++)mx=Math.max(mx,Math.abs(l.act[k]));l._mx=mx;
+    // топ активных для «проводов»
+    const idx=Array.from({length:n},(_,k)=>k).sort((a,b)=>Math.abs(l.act[b])-Math.abs(l.act[a])).slice(0,14);l._top=idx});
+  attnS=L.map(l=>l.att);
+  if(sel>=L.length)sel=0;
+  const tr=snap.train;$('state').textContent=tr.sleeping?'💤 спит':'● бодрствует';$('state').className='pill '+(tr.sleeping?'sleep':'live');
+  $('act').textContent=snap.action?('последнее: '+snap.action[1]):'…';
+  $('kv').innerHTML=[['шаг',tr.steps],['loss',tr.loss],['бит/байт',snap.bpb??'—'],['ток/с',tr.tps],['парам.',(tr.params/1e6).toFixed(2)+'M'],['градиент',tr.gn],['слоёв',L.length],['энтропия',snap.entropy.toFixed(2)],['усталость',tr.fatigue]].map(x=>`<div><small>${x[0]}</small><span>${x[1]}</span></div>`).join('');
+  $('lt').innerHTML='<tr><th>слой</th><th>горит</th><th>вним.</th><th>MLP</th><th>остаток</th></tr>'+L.map((l,i)=>`<tr class="${i===sel?'sel':''}" data-i="${i}" style="cursor:pointer"><td>L${i+1}</td><td>${(l.active*100).toFixed(0)}%</td><td>${l.attn_out.toFixed(1)}</td><td>${l.mlp_out.toFixed(1)}</td><td>${l.resid.toFixed(0)}</td></tr>`).join('');
+  document.querySelectorAll('#lt tr[data-i]').forEach(r=>r.onclick=()=>{sel=+r.dataset.i;onSnap()});
+  const mx=snap.top[0][1];$('topb').innerHTML=snap.top.map(([t,p])=>`<div class="bar"><s>${esc(t.replace(/\n/g,'⏎'))}</s><i style="width:${Math.max(2,p/mx*150)}px"></i><span>${(p*100).toFixed(1)}%</span></div>`).join('');
+  const att=snap.layers[sel].att,tk=snap.tokens;const hh=snap.layers[sel].att_ent.length;
+  const avg=att.map((_,j)=>att[j]);const m2=Math.max(...avg,1e-6);
+  $('tokens').innerHTML=tk.map((t,j)=>`<span style="background:rgba(53,224,255,${(0.05+0.9*avg[j]/m2).toFixed(2)});color:${avg[j]/m2>.5?'#031':'inherit'}">${esc(t.replace(/\n/g,'⏎'))}</span>`).join('')}
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+// ---- сцена ----
+function draw(now){requestAnimationFrame(draw);cx.clearRect(0,0,W,H);if(!snap){cx.fillStyle='#7684ad';cx.fillText('подключаюсь к мозгу…',20,30);return}
+  const t=(now-t0)/1000,L=snap.layers,n=L.length;const pw=Math.min(W*0.46,(H-150)/n*1.9),ph=pw*0.34,gap=Math.min(86,(H-170)/n);
+  const cxm=W*0.5,top=70,pos=i=>({x:cxm,y:H-110-(i+0.5)*gap});
+  // колонка «вывод» наверху
+  cx.fillStyle='#7684ad';cx.font='11px ui-monospace,monospace';cx.textAlign='center';cx.fillText('▲ следующий токен',cxm,top-34);
+  cx.fillStyle='#d6def5';cx.font='15px ui-monospace,monospace';cx.fillText(snap.top.slice(0,3).map(([s,p])=>'«'+s.replace(/\n/g,'⏎')+'» '+(p*100).toFixed(0)+'%').join('   '),cxm,top-12);
+  // провода между слоями
+  for(let i=0;i<n-1;i++){const a=L[i],b=L[i+1],pa=pos(i),pb=pos(i+1),g=Math.ceil(Math.sqrt(a.act.length));
+    for(let k=0;k<a._top.length;k++){const ia=a._top[k],ib=b._top[(k*3)%b._top.length];
+      const xa=pa.x+((ia%g)/g-0.5)*pw+((Math.floor(ia/g))/g-0.5)*pw*0.25, ya=pa.y+((Math.floor(ia/g))/g-0.5)*ph;
+      const gb=Math.ceil(Math.sqrt(b.act.length)),xb=pb.x+((ib%gb)/gb-0.5)*pw+((Math.floor(ib/gb))/gb-0.5)*pw*0.25, yb=pb.y+((Math.floor(ib/gb))/gb-0.5)*ph;
+      const s=Math.abs(a.act[ia])/a._mx;cx.strokeStyle=`hsla(${hue(i,n)},90%,65%,${0.05+0.18*s})`;cx.lineWidth=0.8;cx.beginPath();cx.moveTo(xa,ya);cx.lineTo(xb,yb);cx.stroke();
+      const f=((t*0.7+k*0.13+i*0.21)%1),px=xa+(xb-xa)*f,py=ya+(yb-ya)*f;cx.fillStyle=`hsla(${hue(i,n)},100%,75%,${0.5*s})`;cx.beginPath();cx.arc(px,py,1.8,0,7);cx.fill()}}
+  // плоскости слоёв (снизу вверх)
+  for(let i=0;i<n;i++){const l=L[i],p=pos(i),g=Math.ceil(Math.sqrt(l.act.length)),sm=smooth[i],hu=hue(i,n);
+    cx.save();cx.strokeStyle=`hsla(${hu},80%,60%,${i===sel?0.9:0.25})`;cx.lineWidth=i===sel?1.6:1;
+    cx.beginPath();cx.moveTo(p.x-pw/2,p.y-ph/2);cx.lineTo(p.x+pw/2+pw*0.25,p.y-ph/2);cx.lineTo(p.x+pw/2+pw*0.25+0,p.y+ph/2);cx.lineTo(p.x-pw/2,p.y+ph/2);cx.closePath();cx.stroke();cx.restore();
+    const cell=Math.max(1.4,pw/g*0.62);
+    for(let k=0;k<l.act.length;k++){const tgt=Math.abs(l.act[k])/l._mx;sm[k]+=(tgt-sm[k])*0.18;const v=sm[k];if(v<0.04)continue;
+      const gx=k%g,gy=(k/g)|0,x=p.x+(gx/g-0.5)*pw+(gy/g)*pw*0.25,y=p.y+(gy/g-0.5)*ph;
+      cx.fillStyle=`hsla(${hu+(l.act[k]<0?25:0)},100%,${45+v*35}%,${Math.min(1,v*1.2)})`;cx.fillRect(x,y,cell,cell*0.6)}
+    cx.fillStyle=i===sel?'#35e0ff':'#7684ad';cx.font='11px ui-monospace,monospace';cx.textAlign='right';cx.fillText('L'+(i+1)+'  '+(l.active*100).toFixed(0)+'% горит',p.x-pw/2-10,p.y+4);
+    // вклад внимания/MLP как маленькие бары справа
+    cx.textAlign='left';const bx=p.x+pw/2+pw*0.25+14;cx.fillStyle='#35e0ff';cx.fillRect(bx,p.y-8,Math.min(60,l.attn_out*2),4);cx.fillStyle='#a56bff';cx.fillRect(bx,p.y+0,Math.min(60,l.mlp_out*2),4);
+    if(i===0){cx.fillStyle='#7684ad';cx.fillText('внимание',bx+66,p.y-4);cx.fillText('MLP',bx+66,p.y+4)}}
+  // внимание выбранного слоя: дуги от последнего токена к предыдущим
+  const tk=snap.tokens,m=tk.length,att=L[sel].att,by=H-34,x0=W*0.08,x1=W*0.92,mxa=Math.max(...att,1e-6);
+  cx.textAlign='center';cx.fillStyle='#7684ad';cx.font='11px ui-monospace,monospace';cx.fillText('вход: токены (внимание слоя L'+(sel+1)+' от последнего)',W/2,H-6);
+  const px=j=>x0+(j+0.5)/m*(x1-x0);
+  for(let j=0;j<m;j++){cx.fillStyle=`rgba(53,224,255,${0.15+0.85*att[j]/mxa})`;cx.fillRect(px(j)-Math.max(1,(x1-x0)/m*0.4),by,Math.max(2,(x1-x0)/m*0.8),8);
+    if(j<m-1&&att[j]/mxa>0.08){cx.strokeStyle=`rgba(165,107,255,${0.15+0.7*att[j]/mxa})`;cx.lineWidth=0.5+2.5*att[j]/mxa;cx.beginPath();cx.moveTo(px(j),by);const mid=(px(j)+px(m-1))/2;cx.quadraticCurveTo(mid,by-30-120*Math.abs(px(m-1)-px(j))/(x1-x0),px(m-1),by);cx.stroke()}}
+  // вход в слой 0 / выход
+  const p0=pos(0);cx.strokeStyle='rgba(120,140,200,.25)';cx.beginPath();cx.moveTo(cxm,by);cx.lineTo(p0.x,p0.y+ph/2);cx.stroke()}
+requestAnimationFrame(draw);
+// ---- график loss/bpb ----
+async function spark(){try{const r=await fetch('/brainlog');const a=await r.json();const c=$('spark'),x=c.getContext('2d'),w=c.clientWidth,h=c.clientHeight;c.width=w*DPR;c.height=h*DPR;x.setTransform(DPR,0,0,DPR,0,0);
+  if(a.length>1){const pl=(key,col)=>{const v=a.map(z=>z[key]).filter(z=>z!=null);if(v.length<2)return;const lo=Math.min(...v),hi=Math.max(...v)+1e-6;x.strokeStyle=col;x.beginPath();v.forEach((y,i)=>{const X=i/(v.length-1)*w,Y=h-3-(y-lo)/(hi-lo)*(h-6);i?x.lineTo(X,Y):x.moveTo(X,Y)});x.stroke()};pl('loss','#a56bff');pl('bpb','#5dffb0')}
+  x.fillStyle='#7684ad';x.font='10px ui-monospace,monospace';x.fillText('loss',4,10);x.fillStyle='#5dffb0';x.fillText('бит/байт',34,10)}catch(e){}setTimeout(spark,15000)}
+// ---- журнал событий ----
+const feed=$('feed');function line(cls,txt){const d=document.createElement('div');d.className=cls;d.textContent=txt;feed.appendChild(d);while(feed.childElementCount>140)feed.firstChild.remove();feed.scrollTop=feed.scrollHeight}
+const es=new EventSource('/events');es.onmessage=e=>{const ev=JSON.parse(e.data);if(ev.replay&&ev.type!=='thought')return;const ts=ev.ts||'';
+  switch(ev.type){case 'action':line(ev.name==='награда'||ev.name==='экзамен'?'good':'',ts+' '+ev.name+': '+ev.text);break;case 'arch':line('arch',ts+' 🧬 '+ev.kind+': '+ev.text);break;case 'thought':line('th',ts+' 💭 '+ev.text);break;
+    case 'say':line('',ts+' '+ev.text);break;case 'voice':line('good',ts+' 🗣 '+ev.text);break;case 'user':line('t',ts+' Теодор: '+ev.text);break;case 'draw':line('good',ts+' 🎨 нарисовал: '+ev.text);break;case 'sleep':line('arch',ts+(ev.on?' 💤 засыпает':' ☀ проснулся'));break}};
+$('go').onclick=()=>{probeText=$('probe').value.trim()};$('live').onclick=()=>{probeText='';$('probe').value=''};
+$('probe').addEventListener('keydown',e=>{if(e.key==='Enter')$('go').click()});
+pull();spark();
+</script></body></html>

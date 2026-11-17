@@ -1,0 +1,10 @@
+[Unit]
+Description=Не усыплять ноутбук, пока живёт Genesis
+BindsTo=genesis.service
+After=genesis.service
+
+[Service]
+ExecStart=/usr/bin/systemd-inhibit --what=sleep:idle --who=Genesis --why="Genesis учится, не усыплять ноутбук" --mode=block /usr/bin/sleep infinity
+
+[Install]
+WantedBy=genesis.service
