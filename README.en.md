@@ -2,6 +2,8 @@
 
 > [Русская версия — основная](README.md)
 
+Project presentation (download `docs/presentation.html` and open it in a browser, text in Russian): [docs/presentation.html](docs/presentation.html)
+
 A small, continuously living agent built around **a transformer written from scratch in NumPy** (no PyTorch, no pretrained model, no external LLM).
 It reads, writes code, draws, sleeps, remembers, evolves its own architecture, and keeps an internal state (emotions, body signals, attention)
 that is fed **into the network itself**, so that what it says can depend on what is going on inside it.

@@ -8,6 +8,8 @@
 
 > English version (short copy): [README.en.md](README.en.md)
 
+Презентация проекта (скачай `docs/presentation.html` и открой в браузере): [docs/presentation.html](docs/presentation.html)
+
 ## Зачем это
 
 Я хотел понять современные языковые модели изнутри, поэтому написал каждую часть сам и измерял каждое изменение: автоград, внимание, оптимизатор,
